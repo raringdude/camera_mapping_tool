@@ -1,0 +1,906 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    background-color: #0a1628;
+    color: #7dd3fc;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    background-color: #0f2847;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid #1e4976;
+}
+
+header h1 {
+    font-size: 1.5rem;
+    color: #38bdf8;
+}
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 2rem;
+    background-color: #0f2847;
+    border-bottom: 1px solid #1e4976;
+    flex-wrap: wrap;
+}
+
+.toolbar-btn {
+    padding: 0.5rem 1rem;
+    background-color: #1e3a5f;
+    color: #7dd3fc;
+    border: 1px solid #2d5a87;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.toolbar-btn:hover {
+    background-color: #2d5a87;
+    border-color: #3b7ab8;
+}
+
+.toolbar-btn.active {
+    background-color: #0ea5e9;
+    border-color: #0ea5e9;
+    color: #fff;
+}
+
+.mode-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: 1rem;
+    padding-left: 1rem;
+    border-left: 1px solid #1e4976;
+}
+
+.mode-toggle span {
+    color: #60a5fa;
+    font-size: 0.875rem;
+}
+
+.filter-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: 1rem;
+    padding-left: 1rem;
+    border-left: 1px solid #1e4976;
+}
+
+.filter-controls span {
+    color: #60a5fa;
+    font-size: 0.875rem;
+}
+
+.filter-btn {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+.filter-btn.active {
+    background-color: #22c55e;
+    border-color: #22c55e;
+    color: #fff;
+}
+
+.filter-btn:not(.active) {
+    opacity: 0.6;
+}
+
+.project-controls {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+
+.main-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.map-container {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    background-color: #060d18;
+    cursor: default;
+}
+
+.map-container.pan-mode {
+    cursor: grab;
+}
+
+.map-container.pan-mode:active {
+    cursor: grabbing;
+}
+
+.map-container.add-drop-mode,
+.map-container.add-camera-mode,
+.map-container.add-connection-mode,
+.map-container.add-switch-mode,
+.map-container.add-existing-camera-mode,
+.map-container.add-building-mode,
+.map-container.add-building-rect-mode {
+    cursor: crosshair;
+}
+
+.map-canvas {
+    position: absolute;
+    transform-origin: 0 0;
+    min-width: 100%;
+    min-height: 100%;
+}
+
+.placeholder-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #3b82f6;
+    font-size: 1.25rem;
+    text-align: center;
+}
+
+.layout-image {
+    display: none;
+    max-width: none;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.layout-image.visible {
+    display: block;
+}
+
+.connections-layer,
+.fov-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: visible;
+}
+
+.connection-line {
+    stroke: #f59e0b;
+    stroke-width: 3;
+    stroke-linecap: round;
+    pointer-events: stroke;
+    cursor: pointer;
+}
+
+.connection-line:hover {
+    stroke: #fbbf24;
+    stroke-width: 4;
+}
+
+.connection-line.selected {
+    stroke: #fcd34d;
+    stroke-width: 4;
+    stroke-dasharray: none;
+}
+
+.connection-line.preview {
+    stroke: #f59e0b;
+    stroke-width: 2;
+    stroke-dasharray: 8 4;
+    opacity: 0.7;
+}
+
+.connection-point {
+    fill: #f59e0b;
+    stroke: #fff;
+    stroke-width: 2;
+    pointer-events: all;
+    cursor: pointer;
+}
+
+.connection-point:hover {
+    fill: #fbbf24;
+}
+
+.map-container.add-connection-mode .connection-point {
+    stroke-width: 3;
+    cursor: crosshair;
+    fill: #22d3ee;
+    stroke: #06b6d4;
+}
+
+.map-container.add-connection-mode .connection-point:hover {
+    fill: #4ade80;
+    stroke: #22c55e;
+}
+
+.connection-point.selected {
+    fill: #fcd34d;
+}
+
+.pins-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.pin {
+    position: absolute;
+    width: 32px;
+    height: 32px;
+    transform: translate(-50%, -100%) scale(var(--pin-scale, 1));
+    cursor: pointer;
+    pointer-events: auto;
+    transition: transform 0.1s;
+}
+
+.pin.camera-pin,
+.pin.switch-pin {
+    width: 28px;
+    height: 28px;
+    transform: translate(-50%, -50%) scale(var(--pin-scale, 1));
+}
+
+.pin:hover {
+    transform: translate(-50%, -100%) scale(calc(var(--pin-scale, 1) * 1.1));
+}
+
+.pin.camera-pin:hover,
+.pin.switch-pin:hover {
+    transform: translate(-50%, -50%) scale(calc(var(--pin-scale, 1) * 1.1));
+}
+
+.pin.selected,
+.pin.selected:hover {
+    transform: translate(-50%, -100%) scale(calc(var(--pin-scale, 1) * 1.2));
+    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.8));
+}
+
+.pin.camera-pin.selected,
+.pin.camera-pin.selected:hover,
+.pin.switch-pin.selected,
+.pin.switch-pin.selected:hover {
+    transform: translate(-50%, -50%) scale(calc(var(--pin-scale, 1) * 1.2));
+}
+
+.pin.dragging {
+    opacity: 0.8;
+    z-index: 1000;
+}
+
+.pin.resizing {
+    transition: none;
+}
+
+.pin-bounds {
+    display: none;
+    position: absolute;
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    bottom: -3px;
+    border: 1px dashed rgba(56, 189, 248, 0.5);
+    border-radius: 4px;
+    pointer-events: none;
+}
+
+.pin.selected .pin-bounds {
+    display: block;
+}
+
+.pin-resize-handle {
+    display: none;
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 8px;
+    height: 8px;
+    background-color: #38bdf8;
+    border: 1px solid #fff;
+    border-radius: 1px;
+    cursor: nwse-resize;
+    pointer-events: auto;
+    z-index: 11;
+}
+
+.pin.selected .pin-resize-handle {
+    display: block;
+}
+
+.pin-icon {
+    width: 100%;
+    height: 100%;
+}
+
+.camera-pin .pin-icon {
+    transform-origin: center center;
+    transition: transform 0.15s ease-out;
+}
+
+.pin-label {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(15, 40, 71, 0.95);
+    color: #7dd3fc;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    margin-top: 2px;
+    border: 1px solid #1e4976;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+}
+
+.pin:hover .pin-label,
+.pin.selected .pin-label {
+    opacity: 1;
+}
+
+.pin-delete-btn {
+    display: none;
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 18px;
+    height: 18px;
+    background-color: #dc2626;
+    color: #fff;
+    border-radius: 50%;
+    font-size: 14px;
+    line-height: 18px;
+    text-align: center;
+    cursor: pointer;
+    z-index: 10;
+    pointer-events: auto;
+}
+
+.pin.selected .pin-delete-btn {
+    display: block;
+}
+
+.pin-delete-btn:hover {
+    background-color: #b91c1c;
+}
+
+.camera-pin .pin-label,
+.switch-pin .pin-label {
+    margin-top: 14px;
+}
+
+/* Camera FOV cone */
+.fov-cone {
+    z-index: -1;
+    overflow: visible;
+}
+
+.fov-cone-shape {
+    fill: rgba(239, 68, 68, 0.15);
+    stroke: rgba(239, 68, 68, 0.5);
+    stroke-width: 1;
+    pointer-events: none;
+}
+
+.pin.selected .fov-cone .fov-cone-shape {
+    fill: rgba(239, 68, 68, 0.25);
+    stroke: rgba(239, 68, 68, 0.8);
+    stroke-width: 2;
+}
+
+/* Existing camera FOV - green */
+.existing-camera-pin .fov-cone-shape {
+    fill: rgba(34, 197, 94, 0.15);
+    stroke: rgba(34, 197, 94, 0.5);
+}
+
+.pin.existing-camera-pin.selected .fov-cone .fov-cone-shape {
+    fill: rgba(34, 197, 94, 0.25);
+    stroke: rgba(34, 197, 94, 0.8);
+}
+
+/* FOV handles - only visible when camera is selected */
+.fov-handle {
+    fill: #fbbf24;
+    stroke: #fff;
+    stroke-width: 2;
+    cursor: grab;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    transform-box: fill-box;
+    transform-origin: center;
+}
+
+.pin.selected .fov-cone .fov-handle {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.fov-range-handle {
+    fill: #fbbf24;
+}
+
+.fov-spread-handle {
+    fill: #22d3ee;
+    stroke: #fff;
+    stroke-width: 2;
+}
+
+.fov-handle:hover {
+    filter: brightness(1.3);
+    transform: scale(1.2);
+}
+
+.fov-handle.dragging {
+    cursor: grabbing;
+    opacity: 1;
+}
+
+/* Filter visibility */
+.pins-layer.hide-drops .pin:not(.camera-pin):not(.switch-pin):not(.nvr-pin) {
+    display: none;
+}
+
+.pins-layer.hide-cameras .pin.camera-pin:not(.existing-camera-pin) {
+    display: none;
+}
+
+.pins-layer.hide-existing-cameras .pin.existing-camera-pin {
+    display: none;
+}
+
+.pins-layer.hide-switches .pin.switch-pin {
+    display: none;
+}
+
+.pins-layer.hide-nvrs .pin.nvr-pin {
+    display: none;
+}
+
+.pins-layer.hide-fov .fov-cone {
+    display: none !important;
+}
+
+.connections-layer.hidden,
+.fov-layer.hidden {
+    display: none;
+}
+
+.sidebar {
+    width: 300px;
+    background-color: #0f2847;
+    border-left: 1px solid #1e4976;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.sidebar-section {
+    padding: 1rem;
+    border-bottom: 1px solid #1e4976;
+}
+
+.sidebar-section h2 {
+    font-size: 1rem;
+    color: #38bdf8;
+    margin-bottom: 0.75rem;
+}
+
+.pin-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.empty-message {
+    color: #3b82f6;
+    font-size: 0.875rem;
+    font-style: italic;
+}
+
+.pin-list-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.pin-list-item:hover {
+    background-color: #1e3a5f;
+}
+
+.pin-list-item.selected {
+    background-color: #0ea5e9;
+    color: #fff;
+}
+
+.pin-list-item.selected .pin-type {
+    color: #bae6fd;
+}
+
+.pin-list-item .pin-icon-small {
+    width: 20px;
+    height: 20px;
+}
+
+.pin-list-item .pin-info {
+    flex: 1;
+    font-size: 0.875rem;
+}
+
+.pin-list-item .pin-type,
+.connection-list-item .pin-type,
+.antenna-list-item .pin-type {
+    font-size: 0.75rem;
+    color: #60a5fa;
+}
+
+.connection-list-item,
+.antenna-list-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 4px;
+    cursor: default;
+    transition: background-color 0.2s;
+}
+
+.connection-list-item {
+    cursor: pointer;
+}
+
+.connection-list-item:hover {
+    background-color: #1e3a5f;
+}
+
+.connection-list-item.selected {
+    background-color: #0ea5e9;
+    color: #fff;
+}
+
+.connection-list-item.selected .pin-type {
+    color: #bae6fd;
+}
+
+.connection-list-item .pin-info,
+.antenna-list-item .pin-info {
+    flex: 1;
+    font-size: 0.875rem;
+}
+
+.properties-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.property-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.property-row label {
+    font-size: 0.75rem;
+    color: #60a5fa;
+}
+
+.property-row input,
+.property-row select {
+    padding: 0.5rem;
+    background-color: #1e3a5f;
+    border: 1px solid #2d5a87;
+    border-radius: 4px;
+    color: #7dd3fc;
+    font-size: 0.875rem;
+}
+
+.property-row input:focus,
+.property-row select:focus {
+    outline: none;
+    border-color: #0ea5e9;
+}
+
+.delete-btn {
+    padding: 0.5rem 1rem;
+    background-color: #dc2626;
+    color: #fff;
+    border: 1px solid #b91c1c;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    margin-top: 0.75rem;
+    width: 100%;
+    font-weight: 500;
+}
+
+.delete-btn:hover {
+    background-color: #b91c1c;
+}
+
+.camera-types-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.camera-type-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem;
+    background-color: #1e3a5f;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
+.type-price {
+    color: #4ade80;
+}
+
+.labor-cost-config {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.labor-cost-config label {
+    font-size: 0.75rem;
+    color: #60a5fa;
+}
+
+.labor-cost-config input {
+    padding: 0.5rem;
+    background-color: #1e3a5f;
+    border: 1px solid #2d5a87;
+    border-radius: 4px;
+    color: #7dd3fc;
+    font-size: 0.875rem;
+    width: 100px;
+}
+
+.budget-section {
+    margin-top: auto;
+    background-color: #1e3a5f;
+}
+
+.budget-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.budget-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+}
+
+.budget-row.total {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #4ade80;
+}
+
+.budget-breakdown {
+    padding-left: 1rem;
+    font-size: 0.8rem;
+    color: #60a5fa;
+}
+
+.budget-breakdown .breakdown-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.25rem 0;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid #2d5a87;
+    margin: 0.25rem 0;
+}
+
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.modal-content {
+    background-color: #0f2847;
+    padding: 1.5rem;
+    border-radius: 8px;
+    min-width: 300px;
+    border: 1px solid #1e4976;
+}
+
+.modal-content h3 {
+    color: #38bdf8;
+    margin-bottom: 1rem;
+}
+
+.modal-content p {
+    margin-bottom: 1.5rem;
+    color: #7dd3fc;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+.modal-btn {
+    padding: 0.5rem 1.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    border: none;
+}
+
+.modal-btn.confirm {
+    background-color: #0ea5e9;
+    color: #fff;
+}
+
+.modal-btn.cancel {
+    background-color: #1e3a5f;
+    color: #7dd3fc;
+    border: 1px solid #2d5a87;
+}
+
+.modal-btn:hover {
+    opacity: 0.9;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0a1628;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #2d5a87;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #3b7ab8;
+}
+
+/* Building polygons */
+.buildings-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: visible;
+}
+
+.building-polygon {
+    fill: rgba(6, 182, 212, 0.12);
+    stroke: #06b6d4;
+    stroke-width: 2;
+    pointer-events: none;
+}
+
+.building-group.selected .building-polygon {
+    fill: rgba(6, 182, 212, 0.25);
+    stroke: #22d3ee;
+    stroke-width: 3;
+}
+
+.building-label {
+    fill: #06b6d4;
+    font-size: 14px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    pointer-events: none;
+    user-select: none;
+}
+
+.building-group.selected .building-label {
+    fill: #22d3ee;
+    font-weight: bold;
+}
+
+/* Building creation preview */
+.building-preview .building-line {
+    stroke: #06b6d4;
+    stroke-width: 2;
+    stroke-dasharray: 6 3;
+    opacity: 0.8;
+}
+
+.building-preview .building-point {
+    fill: #06b6d4;
+    stroke: #fff;
+    stroke-width: 2;
+}
+
+.building-preview .building-close-point {
+    fill: #22d3ee;
+    stroke: #fff;
+    stroke-width: 2;
+}
+
+.building-preview .building-preview-line {
+    stroke: #06b6d4;
+    stroke-width: 1.5;
+    stroke-dasharray: 4 4;
+    opacity: 0.5;
+}
+
+.building-rect-preview {
+    fill: rgba(6, 182, 212, 0.12);
+    stroke: #06b6d4;
+    stroke-width: 2;
+    stroke-dasharray: 6 3;
+    pointer-events: none;
+}
+
+.buildings-layer.hidden {
+    display: none;
+}
+
+/* Building list item in sidebar */
+.building-list-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.building-list-item:hover {
+    background-color: #1e3a5f;
+}
+
+.building-list-item.selected {
+    background-color: #0ea5e9;
+    color: #fff;
+}
+
+.building-list-item.selected .pin-type {
+    color: #bae6fd;
+}
+
+.building-list-item .pin-info {
+    flex: 1;
+    font-size: 0.875rem;
+}

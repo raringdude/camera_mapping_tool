@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Mapping Tool</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <header>
+        <h1>Camera Mapping Tool</h1>
+    </header>
+
+    <div class="toolbar">
+        <input type="file" id="imageUpload" accept="image/png, image/jpeg" hidden>
+        <button id="uploadBtn" class="toolbar-btn">Upload Layout</button>
+        <button id="addDropBtn" class="toolbar-btn">Add Network Drop</button>
+        <button id="addCameraBtn" class="toolbar-btn">Add Camera</button>
+        <button id="addConnectionBtn" class="toolbar-btn">Add Connection</button>
+        <button id="addSwitchBtn" class="toolbar-btn">Add Switch</button>
+        <button id="addExistingCameraBtn" class="toolbar-btn">Add Existing Camera</button>
+        <button id="addNvrBtn" class="toolbar-btn">Add NVR</button>
+        <button id="addBuildingBtn" class="toolbar-btn">Add Building</button>
+        <button id="addBuildingRectBtn" class="toolbar-btn">Add Building (Rect)</button>
+        <div class="mode-toggle">
+            <span>Mode:</span>
+            <button id="selectModeBtn" class="toolbar-btn mode-btn active">Select</button>
+            <button id="panModeBtn" class="toolbar-btn mode-btn">Pan</button>
+        </div>
+        <div class="filter-controls">
+            <span>Show:</span>
+            <button id="filterDropsBtn" class="toolbar-btn filter-btn active" data-filter="drops">Drops</button>
+            <button id="filterCamerasBtn" class="toolbar-btn filter-btn active" data-filter="cameras">Cameras</button>
+            <button id="filterExistingCamerasBtn" class="toolbar-btn filter-btn active" data-filter="existing-cameras">Existing Cams</button>
+            <button id="filterSwitchesBtn" class="toolbar-btn filter-btn active" data-filter="switches">Switches</button>
+            <button id="filterNvrsBtn" class="toolbar-btn filter-btn active" data-filter="nvrs">NVRs</button>
+            <button id="filterConnectionsBtn" class="toolbar-btn filter-btn active" data-filter="connections">Connections</button>
+            <button id="filterFovBtn" class="toolbar-btn filter-btn active" data-filter="fov">FOV</button>
+            <button id="filterBuildingsBtn" class="toolbar-btn filter-btn active" data-filter="buildings">Buildings</button>
+        </div>
+        <div class="project-controls">
+            <button id="newProjectBtn" class="toolbar-btn">New Project</button>
+            <button id="saveProjectBtn" class="toolbar-btn">Save Project</button>
+            <button id="loadProjectBtn" class="toolbar-btn">Load Project</button>
+            <button id="exportExcelBtn" class="toolbar-btn">Export Excel</button>
+            <input type="file" id="loadProjectInput" accept=".json" hidden>
+        </div>
+    </div>
+
+    <main class="main-container">
+        <div class="map-container" id="mapContainer">
+            <div class="map-canvas" id="mapCanvas">
+                <div class="placeholder-text" id="placeholderText">
+                    Upload a layout image to get started
+                </div>
+                <img id="layoutImage" class="layout-image" alt="Layout">
+                <svg class="buildings-layer" id="buildingsLayer"></svg>
+                <svg class="connections-layer" id="connectionsLayer"></svg>
+                <svg class="fov-layer" id="fovLayer"></svg>
+                <div class="pins-layer" id="pinsLayer"></div>
+            </div>
+        </div>
+
+        <aside class="sidebar">
+            <section class="sidebar-section">
+                <h2>Pins</h2>
+                <div class="pin-list" id="pinList">
+                    <p class="empty-message">No pins added yet</p>
+                </div>
+            </section>
+
+            <section class="sidebar-section" id="propertiesSection" style="display: none;">
+                <h2>Properties</h2>
+                <div class="properties-panel" id="propertiesPanel">
+                    <div class="property-row">
+                        <label for="pinName">Name:</label>
+                        <input type="text" id="pinName" placeholder="Enter name">
+                    </div>
+                    <div class="property-row" id="cameraPriceRow" style="display: none;">
+                        <label for="cameraPrice">Price ($):</label>
+                        <input type="number" id="cameraPrice" min="0" value="1500">
+                    </div>
+                    <div class="property-row" id="linkedDropRow" style="display: none;">
+                        <label for="linkedDrop">Linked Drop:</label>
+                        <select id="linkedDrop">
+                            <option value="">-- Select Drop --</option>
+                        </select>
+                    </div>
+                    <div class="property-row" id="fovAngleRow" style="display: none;">
+                        <label for="fovAngle">Direction (degrees):</label>
+                        <input type="number" id="fovAngle" min="0" max="360" value="0">
+                    </div>
+                    <div class="property-row" id="fovSpreadRow" style="display: none;">
+                        <label for="fovSpread">Field of View (degrees):</label>
+                        <input type="number" id="fovSpread" min="10" max="180" value="60">
+                    </div>
+                    <div class="property-row" id="fovRangeRow" style="display: none;">
+                        <label for="fovRange">View Range (pixels):</label>
+                        <input type="number" id="fovRange" min="20" max="500" value="100">
+                    </div>
+                    <button id="deletePinBtn" class="delete-btn">Delete</button>
+                </div>
+            </section>
+
+            <section class="sidebar-section">
+                <h2>Cost Settings</h2>
+                <div class="labor-cost-config">
+                    <label for="defaultCameraPrice">Default camera price ($):</label>
+                    <input type="number" id="defaultCameraPrice" value="1500" min="0">
+                </div>
+                <div class="labor-cost-config">
+                    <label for="defaultSwitchPrice">Default switch price ($):</label>
+                    <input type="number" id="defaultSwitchPrice" value="1600" min="0">
+                </div>
+                <div class="labor-cost-config">
+                    <label for="defaultNvrPrice">Default NVR price ($):</label>
+                    <input type="number" id="defaultNvrPrice" value="3000" min="0">
+                </div>
+                <div class="labor-cost-config">
+                    <label for="connectionCost">Cost per PtP Antenna ($):</label>
+                    <input type="number" id="connectionCost" value="400" min="0">
+                </div>
+            </section>
+
+            <section class="sidebar-section budget-section">
+                <h2>Budget Summary</h2>
+                <div class="budget-panel" id="budgetPanel">
+                    <div class="budget-row">
+                        <span>New Cameras:</span>
+                        <span id="cameraCount">0</span>
+                    </div>
+                    <div class="budget-row">
+                        <span>Existing Cameras:</span>
+                        <span id="existingCameraCount">0</span>
+                    </div>
+                    <div class="budget-row">
+                        <span>Switches:</span>
+                        <span id="switchCount">0</span>
+                    </div>
+                    <div class="budget-row">
+                        <span>NVRs:</span>
+                        <span id="nvrCount">0</span>
+                    </div>
+                    <div class="budget-breakdown" id="budgetBreakdown">
+                        <!-- Equipment breakdown inserted here -->
+                    </div>
+                    <div class="budget-row">
+                        <span>PtP Antennas:</span>
+                        <span id="antennaCount">0</span>
+                    </div>
+                    <hr>
+                    <div class="budget-row">
+                        <span>Equipment Subtotal:</span>
+                        <span id="equipmentSubtotal">$0</span>
+                    </div>
+                    <div class="budget-row">
+                        <span>Antennas Subtotal:</span>
+                        <span id="antennaSubtotal">$0</span>
+                    </div>
+                    <hr>
+                    <div class="budget-row total">
+                        <span>Total:</span>
+                        <span id="totalCost">$0</span>
+                    </div>
+                </div>
+            </section>
+        </aside>
+    </main>
+
+    <div class="modal" id="confirmModal" style="display: none;">
+        <div class="modal-content">
+            <h3 id="confirmTitle">Confirm</h3>
+            <p id="confirmMessage">Are you sure?</p>
+            <div class="modal-actions">
+                <button id="confirmYes" class="modal-btn confirm">Yes</button>
+                <button id="confirmNo" class="modal-btn cancel">No</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
