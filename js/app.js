@@ -1002,6 +1002,7 @@
                 price: data.price !== undefined ? data.price : defaultPrice,
                 linkedDrop: data.linkedDrop || '',
                 pinScale: data.pinScale !== undefined ? data.pinScale : defaultPinScale,
+                phase: data.phase || null,
                 // FOV properties for cameras
                 fovAngle: data.fovAngle || 0,
                 fovSpread: data.fovSpread || 60,
@@ -1029,6 +1030,7 @@
                 element.className = 'pin';
             }
             element.dataset.id = pin.id;
+            if (pin.phase) element.dataset.phase = pin.phase;
             element.style.left = `${pin.x}px`;
             element.style.top = `${pin.y}px`;
             element.style.setProperty('--pin-scale', pin.pinScale || 1);
@@ -1447,6 +1449,18 @@
                 }
             }
 
+            // Update phase data attribute if changed
+            if (updates.phase !== undefined) {
+                const phaseEl = this.getPinElement(id);
+                if (phaseEl) {
+                    if (pin.phase) {
+                        phaseEl.dataset.phase = pin.phase;
+                    } else {
+                        delete phaseEl.dataset.phase;
+                    }
+                }
+            }
+
             // Update pin scale CSS variable if changed
             if (updates.pinScale !== undefined) {
                 const scaleEl = this.getPinElement(id);
@@ -1752,6 +1766,8 @@
                 fovSpreadRow: document.getElementById('fovSpreadRow'),
                 fovRange: document.getElementById('fovRange'),
                 fovRangeRow: document.getElementById('fovRangeRow'),
+                pinPhase: document.getElementById('pinPhase'),
+                pinPhaseRow: document.getElementById('pinPhaseRow'),
                 deletePinBtn: document.getElementById('deletePinBtn'),
                 confirmModal: document.getElementById('confirmModal'),
                 confirmTitle: document.getElementById('confirmTitle'),
@@ -1772,6 +1788,7 @@
             this.elements.fovAngle.addEventListener('input', () => this.handleFovChange());
             this.elements.fovSpread.addEventListener('input', () => this.handleFovChange());
             this.elements.fovRange.addEventListener('input', () => this.handleFovChange());
+            this.elements.pinPhase.addEventListener('change', () => this.handlePhaseChange());
             this.elements.deletePinBtn.addEventListener('click', () => this.handleDeleteClick());
             this.elements.confirmNo.addEventListener('click', () => this.hideConfirmModal());
 
@@ -2020,6 +2037,7 @@
             this.elements.fovAngleRow.style.display = 'none';
             this.elements.fovSpreadRow.style.display = 'none';
             this.elements.fovRangeRow.style.display = 'none';
+            this.elements.pinPhaseRow.style.display = 'none';
 
             this.elements.pinList.querySelectorAll('.pin-list-item, .connection-list-item, .building-list-item').forEach(item => {
                 const isSelected = item.dataset.id === building.id;
@@ -2044,6 +2062,10 @@
             console.log('Showing properties section');
             this.elements.propertiesSection.style.display = 'block';
             this.elements.pinName.value = pin.name;
+
+            // Phase dropdown (shown for all pin types)
+            this.elements.pinPhaseRow.style.display = 'block';
+            this.updatePhaseOptions(pin);
 
             if (isCameraType(pin.type)) {
                 this.elements.cameraPriceRow.style.display = 'block';
@@ -2099,6 +2121,7 @@
             this.elements.fovAngleRow.style.display = 'none';
             this.elements.fovSpreadRow.style.display = 'none';
             this.elements.fovRangeRow.style.display = 'none';
+            this.elements.pinPhaseRow.style.display = 'none';
 
             this.elements.pinList.querySelectorAll('.pin-list-item, .connection-list-item, .building-list-item').forEach(item => {
                 const isSelected = item.dataset.id === connection.id;
@@ -2162,6 +2185,22 @@
                 fovSpread: parseFloat(this.elements.fovSpread.value) || 60,
                 fovRange: parseFloat(this.elements.fovRange.value) || 100
             });
+        }
+
+        updatePhaseOptions(pin) {
+            const phases = window.app ? window.app.phases : [];
+            let options = '<option value="">-- Unassigned --</option>';
+            phases.forEach(phase => {
+                const selected = pin.phase === phase ? 'selected' : '';
+                options += `<option value="${phase}" ${selected}>${phase}</option>`;
+            });
+            this.elements.pinPhase.innerHTML = options;
+        }
+
+        handlePhaseChange() {
+            if (!this.currentSelection || this.currentSelection.type !== 'pin') return;
+            const value = this.elements.pinPhase.value || null;
+            this.pinManager.updatePin(this.currentSelection.data.id, { phase: value });
         }
 
         handleDeleteClick() {
@@ -2240,6 +2279,8 @@
 
             this.currentMode = 'select';
             this.imageDataURL = null;
+            this.phases = [];
+            this.phaseFilters = {};
 
             this.init();
         }
@@ -2293,6 +2334,9 @@
 
             // Setup filter buttons
             this.setupFilterButtons();
+
+            // Add Phase button
+            document.getElementById('addPhaseBtn').addEventListener('click', () => this.addPhase());
         }
 
         setupFilterButtons() {
@@ -2435,6 +2479,7 @@
                 this.uiManager.updatePinList(pins, this.connectionManager.connections);
                 this.budgetManager.setPins(pins);
                 this.updatePinBuildingAssociations();
+                this.applyPhaseFilters();
             };
 
             this.connectionManager.onConnectionsChange = (connections) => {
@@ -2510,6 +2555,9 @@
                 this.buildingManager.reset();
                 this.budgetManager.reset();
                 this.imageDataURL = null;
+                this.phases = [];
+                this.phaseFilters = {};
+                this.renderPhaseFilters();
                 this.setMode('select');
             });
         }
@@ -2522,7 +2570,8 @@
                 connections: this.connectionManager.getState(),
                 buildings: this.buildingManager.getState(),
                 budget: this.budgetManager.getState(),
-                map: this.mapManager.getState()
+                map: this.mapManager.getState(),
+                phases: this.phases
             };
 
             const json = JSON.stringify(project, null, 2);
@@ -2553,7 +2602,8 @@
                     building: building ? building.name : '',
                     type: typeLabels[pin.type] || pin.type,
                     name: pin.name,
-                    cost: pin.price || 0
+                    cost: pin.price || 0,
+                    phase: pin.phase || ''
                 };
             });
 
@@ -2596,9 +2646,9 @@
             const lines = [];
 
             // Detail section
-            lines.push(['Building', 'Type', 'Name', 'Unit Cost'].map(esc).join(','));
+            lines.push(['Building', 'Type', 'Name', 'Unit Cost', 'Phase'].map(esc).join(','));
             rows.forEach(r => {
-                lines.push([r.building, r.type, r.name, r.cost].map(esc).join(','));
+                lines.push([r.building, r.type, r.name, r.cost, r.phase].map(esc).join(','));
             });
 
             // Blank separator
@@ -2633,6 +2683,100 @@
             a.download = `camera-project-export-${Date.now()}.csv`;
             a.click();
             URL.revokeObjectURL(url);
+        }
+
+        addPhase() {
+            const name = prompt('Enter phase name:');
+            if (!name || !name.trim()) return;
+            const trimmed = name.trim();
+            if (this.phases.includes(trimmed)) {
+                alert('Phase already exists.');
+                return;
+            }
+            this.phases.push(trimmed);
+            this.phaseFilters[trimmed] = true;
+            this.renderPhaseFilters();
+        }
+
+        removePhase(phase) {
+            this.phases = this.phases.filter(p => p !== phase);
+            delete this.phaseFilters[phase];
+            // Unassign pins that had this phase
+            this.pinManager.pins.forEach(pin => {
+                if (pin.phase === phase) {
+                    this.pinManager.updatePin(pin.id, { phase: null });
+                }
+            });
+            this.renderPhaseFilters();
+            this.applyPhaseFilters();
+        }
+
+        renderPhaseFilters() {
+            const container = document.getElementById('phaseFilters');
+            container.innerHTML = '';
+
+            // "Unassigned" toggle
+            const unassignedBtn = document.createElement('button');
+            unassignedBtn.className = 'toolbar-btn filter-btn' + (this.phaseFilters['__unassigned__'] !== false ? ' active' : '');
+            unassignedBtn.textContent = 'Unassigned';
+            unassignedBtn.addEventListener('click', () => {
+                const isActive = this.phaseFilters['__unassigned__'] !== false;
+                this.phaseFilters['__unassigned__'] = !isActive;
+                unassignedBtn.classList.toggle('active', !isActive);
+                this.applyPhaseFilters();
+            });
+            container.appendChild(unassignedBtn);
+
+            this.phases.forEach(phase => {
+                const btn = document.createElement('button');
+                btn.className = 'toolbar-btn filter-btn' + (this.phaseFilters[phase] !== false ? ' active' : '');
+                btn.textContent = phase;
+                btn.addEventListener('click', () => {
+                    const isActive = this.phaseFilters[phase] !== false;
+                    this.phaseFilters[phase] = !isActive;
+                    btn.classList.toggle('active', !isActive);
+                    this.applyPhaseFilters();
+                });
+                btn.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    if (confirm(`Remove phase "${phase}"? Pins assigned to it will become Unassigned.`)) {
+                        this.removePhase(phase);
+                    }
+                });
+                container.appendChild(btn);
+            });
+        }
+
+        applyPhaseFilters() {
+            const pinsLayer = document.getElementById('pinsLayer');
+            // Check if any phase filter is off
+            const anyPhaseFilterOff = this.phaseFilters['__unassigned__'] === false ||
+                this.phases.some(p => this.phaseFilters[p] === false);
+
+            if (!anyPhaseFilterOff) {
+                // All phase filters on — remove all phase-hide classes
+                pinsLayer.querySelectorAll('.pin[data-phase-hidden]').forEach(el => {
+                    el.removeAttribute('data-phase-hidden');
+                });
+                return;
+            }
+
+            this.pinManager.pins.forEach(pin => {
+                const el = this.pinManager.getPinElement(pin.id);
+                if (!el) return;
+                const phase = pin.phase;
+                let visible;
+                if (!phase) {
+                    visible = this.phaseFilters['__unassigned__'] !== false;
+                } else {
+                    visible = this.phaseFilters[phase] !== false;
+                }
+                if (visible) {
+                    el.removeAttribute('data-phase-hidden');
+                } else {
+                    el.setAttribute('data-phase-hidden', '');
+                }
+            });
         }
 
         updatePinBuildingAssociations() {
@@ -2679,6 +2823,13 @@
 
                 if (project.map) {
                     this.mapManager.setState(project.map);
+                }
+
+                if (project.phases) {
+                    this.phases = project.phases;
+                    this.phaseFilters = {};
+                    this.phases.forEach(p => { this.phaseFilters[p] = true; });
+                    this.renderPhaseFilters();
                 }
 
                 this.setMode('select');

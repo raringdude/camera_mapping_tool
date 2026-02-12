@@ -99,6 +99,11 @@ header h1 {
     opacity: 0.6;
 }
 
+#phaseFilters {
+    display: inline-flex;
+    gap: 0.35rem;
+}
+
 .project-controls {
     display: flex;
     gap: 0.5rem;
@@ -477,6 +482,10 @@ header h1 {
 
 .pins-layer.hide-fov .fov-cone {
     display: none !important;
+}
+
+.pins-layer .pin[data-phase-hidden] {
+    display: none;
 }
 
 .connections-layer.hidden,

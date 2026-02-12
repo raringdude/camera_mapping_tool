@@ -38,6 +38,11 @@
             <button id="filterFovBtn" class="toolbar-btn filter-btn active" data-filter="fov">FOV</button>
             <button id="filterBuildingsBtn" class="toolbar-btn filter-btn active" data-filter="buildings">Buildings</button>
         </div>
+        <div class="filter-controls">
+            <span>Phases:</span>
+            <button id="addPhaseBtn" class="toolbar-btn">+ Phase</button>
+            <span id="phaseFilters"></span>
+        </div>
         <div class="project-controls">
             <button id="newProjectBtn" class="toolbar-btn">New Project</button>
             <button id="saveProjectBtn" class="toolbar-btn">Save Project</button>
@@ -75,6 +80,12 @@
                     <div class="property-row">
                         <label for="pinName">Name:</label>
                         <input type="text" id="pinName" placeholder="Enter name">
+                    </div>
+                    <div class="property-row" id="pinPhaseRow" style="display: none;">
+                        <label for="pinPhase">Phase:</label>
+                        <select id="pinPhase">
+                            <option value="">-- Unassigned --</option>
+                        </select>
                     </div>
                     <div class="property-row" id="cameraPriceRow" style="display: none;">
                         <label for="cameraPrice">Price ($):</label>
