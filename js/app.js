@@ -1571,6 +1571,7 @@
     class BudgetManager {
         constructor() {
             this.connectionCost = 400;
+            this.taxRate = 0;
             this.pins = [];
             this.connections = [];
 
@@ -1583,11 +1584,15 @@
                 budgetBreakdown: document.getElementById('budgetBreakdown'),
                 equipmentSubtotal: document.getElementById('equipmentSubtotal'),
                 antennaSubtotal: document.getElementById('antennaSubtotal'),
+                subtotal: document.getElementById('subtotal'),
+                taxRateDisplay: document.getElementById('taxRateDisplay'),
+                taxAmount: document.getElementById('taxAmount'),
                 totalCost: document.getElementById('totalCost'),
                 defaultCameraPriceInput: document.getElementById('defaultCameraPrice'),
                 defaultSwitchPriceInput: document.getElementById('defaultSwitchPrice'),
                 defaultNvrPriceInput: document.getElementById('defaultNvrPrice'),
-                connectionCostInput: document.getElementById('connectionCost')
+                connectionCostInput: document.getElementById('connectionCost'),
+                salesTaxRateInput: document.getElementById('salesTaxRate')
             };
 
             this.init();
@@ -1608,6 +1613,11 @@
 
             this.elements.connectionCostInput.addEventListener('change', (e) => {
                 this.connectionCost = parseFloat(e.target.value) || 0;
+                this.update();
+            });
+
+            this.elements.salesTaxRateInput.addEventListener('change', (e) => {
+                this.taxRate = parseFloat(e.target.value) || 0;
                 this.update();
             });
         }
@@ -1659,10 +1669,15 @@
             this.elements.budgetBreakdown.innerHTML = breakdownHTML;
 
             const antennaTotal = antennaCount * this.connectionCost;
-            const total = equipmentTotal + antennaTotal;
+            const subtotal = equipmentTotal + antennaTotal;
+            const taxAmount = Math.round(subtotal * (this.taxRate / 100) * 100) / 100;
+            const total = subtotal + taxAmount;
 
             this.elements.equipmentSubtotal.textContent = `$${equipmentTotal}`;
             this.elements.antennaSubtotal.textContent = `$${antennaTotal}`;
+            this.elements.subtotal.textContent = `$${subtotal}`;
+            this.elements.taxRateDisplay.textContent = this.taxRate;
+            this.elements.taxAmount.textContent = `$${taxAmount}`;
             this.elements.totalCost.textContent = `$${total}`;
         }
 
@@ -1681,7 +1696,8 @@
                 defaultCameraPrice: DEFAULT_CAMERA_PRICE,
                 defaultSwitchPrice: DEFAULT_SWITCH_PRICE,
                 defaultNvrPrice: DEFAULT_NVR_PRICE,
-                connectionCost: this.connectionCost
+                connectionCost: this.connectionCost,
+                taxRate: this.taxRate
             };
         }
 
@@ -1690,10 +1706,12 @@
             DEFAULT_SWITCH_PRICE = state.defaultSwitchPrice || 1600;
             DEFAULT_NVR_PRICE = state.defaultNvrPrice || 3000;
             this.connectionCost = state.connectionCost || 400;
+            this.taxRate = state.taxRate || 0;
             this.elements.defaultCameraPriceInput.value = DEFAULT_CAMERA_PRICE;
             this.elements.defaultSwitchPriceInput.value = DEFAULT_SWITCH_PRICE;
             this.elements.defaultNvrPriceInput.value = DEFAULT_NVR_PRICE;
             this.elements.connectionCostInput.value = this.connectionCost;
+            this.elements.salesTaxRateInput.value = this.taxRate;
         }
 
         reset() {
@@ -1703,10 +1721,12 @@
             DEFAULT_SWITCH_PRICE = 1600;
             DEFAULT_NVR_PRICE = 3000;
             this.connectionCost = 400;
+            this.taxRate = 0;
             this.elements.defaultCameraPriceInput.value = 1500;
             this.elements.defaultSwitchPriceInput.value = 1600;
             this.elements.defaultNvrPriceInput.value = 3000;
             this.elements.connectionCostInput.value = 400;
+            this.elements.salesTaxRateInput.value = 0;
             this.update();
         }
     }
@@ -2595,9 +2615,15 @@
                 lines.push([s.building, s.type, s.qty, s.total].map(esc).join(','));
             });
 
-            // Grand total
+            // Tax and grand total
+            const taxRate = this.budgetManager.taxRate;
+            const taxAmount = Math.round(grandTotal * (taxRate / 100) * 100) / 100;
+            const grandTotalWithTax = grandTotal + taxAmount;
+
             lines.push('');
-            lines.push(['', '', 'Grand Total', grandTotal].map(esc).join(','));
+            lines.push(['', '', 'Subtotal', grandTotal].map(esc).join(','));
+            lines.push(['', '', `Sales Tax (${taxRate}%)`, taxAmount].map(esc).join(','));
+            lines.push(['', '', 'Grand Total', grandTotalWithTax].map(esc).join(','));
 
             const csv = lines.join('\r\n');
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
