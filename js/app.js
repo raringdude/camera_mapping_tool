@@ -2279,6 +2279,7 @@
 
             this.currentMode = 'select';
             this.imageDataURL = null;
+            this.projectName = '';
             this.phases = [];
             this.phaseFilters = {};
 
@@ -2331,6 +2332,9 @@
             loadProjectBtn.addEventListener('click', () => loadProjectInput.click());
             loadProjectInput.addEventListener('change', (e) => this.loadProject(e));
             exportExcelBtn.addEventListener('click', () => this.exportExcel());
+
+            const exportPdfBtn = document.getElementById('exportPdfBtn');
+            exportPdfBtn.addEventListener('click', () => this.exportPDF());
 
             // Setup filter buttons
             this.setupFilterButtons();
@@ -2555,6 +2559,7 @@
                 this.buildingManager.reset();
                 this.budgetManager.reset();
                 this.imageDataURL = null;
+                this.projectName = '';
                 this.phases = [];
                 this.phaseFilters = {};
                 this.renderPhaseFilters();
@@ -2563,8 +2568,48 @@
         }
 
         saveProject() {
+            const modal = document.getElementById('saveModal');
+            const input = document.getElementById('saveProjectName');
+            const confirmBtn = document.getElementById('saveConfirm');
+            const cancelBtn = document.getElementById('saveCancel');
+
+            input.value = this.projectName || '';
+            modal.style.display = 'flex';
+            input.focus();
+            input.select();
+
+            const cleanup = () => {
+                modal.style.display = 'none';
+                confirmBtn.removeEventListener('click', onSave);
+                cancelBtn.removeEventListener('click', onCancel);
+                input.removeEventListener('keydown', onKeydown);
+            };
+
+            const onSave = () => {
+                const name = input.value.trim() || 'Untitled Project';
+                this.projectName = name;
+                cleanup();
+                this.doSaveProject(name);
+            };
+
+            const onCancel = () => {
+                cleanup();
+            };
+
+            const onKeydown = (e) => {
+                if (e.key === 'Enter') onSave();
+                if (e.key === 'Escape') onCancel();
+            };
+
+            confirmBtn.addEventListener('click', onSave);
+            cancelBtn.addEventListener('click', onCancel);
+            input.addEventListener('keydown', onKeydown);
+        }
+
+        doSaveProject(name) {
             const project = {
                 version: 1,
+                name: name,
                 image: this.imageDataURL,
                 pins: this.pinManager.getState(),
                 connections: this.connectionManager.getState(),
@@ -2578,9 +2623,10 @@
             const blob = new Blob([json], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
 
+            const filename = name.replace(/[^a-zA-Z0-9_\- ]/g, '').replace(/\s+/g, '-');
             const a = document.createElement('a');
             a.href = url;
-            a.download = `camera-project-${Date.now()}.json`;
+            a.download = `${filename}.json`;
             a.click();
 
             URL.revokeObjectURL(url);
@@ -2683,6 +2729,434 @@
             a.download = `camera-project-export-${Date.now()}.csv`;
             a.click();
             URL.revokeObjectURL(url);
+        }
+
+        async exportPDF() {
+            const btn = document.getElementById('exportPdfBtn');
+            const origText = btn.textContent;
+            btn.textContent = 'Generating...';
+            btn.disabled = true;
+
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('portrait', 'mm', 'a4');
+                const pageW = doc.internal.pageSize.getWidth();
+                const pageH = doc.internal.pageSize.getHeight();
+                const margin = 15;
+                const contentW = pageW - margin * 2;
+
+                // ── Dark blue theme colors (RGB) ──
+                const TC = {
+                    pageBg:    [10, 22, 40],
+                    headerBg:  [15, 40, 71],
+                    accent:    [30, 73, 118],
+                    lightBlue: [56, 189, 248],
+                    paleBlue:  [125, 211, 252],
+                    white:     [255, 255, 255],
+                    muted:     [148, 163, 184],
+                    rowAlt:    [12, 28, 50],
+                    totalBg:   [22, 60, 102],
+                };
+
+                // ── Theme helpers ──
+                const drawPageBg = () => {
+                    doc.setFillColor(...TC.pageBg);
+                    doc.rect(0, 0, pageW, pageH, 'F');
+                };
+                drawPageBg(); // first page
+
+                const addThemedPage = () => {
+                    doc.addPage();
+                    drawPageBg();
+                };
+
+                const fmt = (n) => '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+                const typeLabels = {
+                    'camera': 'New Camera',
+                    'existing-camera': 'Existing Camera',
+                    'switch': 'Network Switch',
+                    'nvr': 'NVR',
+                    'drop': 'Network Drop'
+                };
+
+                // Page title with accent underline
+                const drawPageTitle = (title, yPos) => {
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(20);
+                    doc.setTextColor(...TC.lightBlue);
+                    doc.text(title, margin, yPos);
+                    doc.setDrawColor(...TC.accent);
+                    doc.setLineWidth(0.5);
+                    doc.line(margin, yPos + 2, margin + contentW, yPos + 2);
+                    return yPos + 12;
+                };
+
+                // Section header bar
+                const drawSectionBar = (text, yPos) => {
+                    doc.setFillColor(...TC.headerBg);
+                    doc.rect(margin, yPos - 5.5, contentW, 8, 'F');
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(11);
+                    doc.setTextColor(...TC.lightBlue);
+                    doc.text(text, margin + 4, yPos);
+                    return yPos + 8;
+                };
+
+                // Styled table renderer. Returns table info object for use with drawTotalRow.
+                // cols: [{label, width, align:'left'|'right'|'center'}]
+                // rows: [[val, ...]]
+                const drawTable = (cols, rows, startY) => {
+                    const rowH = 7;
+                    const pad = 3;
+                    let y = startY;
+
+                    const totalW = cols.reduce((s, c) => s + c.width, 0);
+                    const tableX = margin + (contentW - totalW) / 2;
+                    const colX = [];
+                    let cx = tableX;
+                    cols.forEach(col => { colX.push(cx); cx += col.width; });
+
+                    // Header row
+                    doc.setFillColor(...TC.headerBg);
+                    doc.rect(tableX, y, totalW, rowH, 'F');
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(9);
+                    doc.setTextColor(...TC.paleBlue);
+                    cols.forEach((col, i) => {
+                        const ty = y + rowH * 0.68;
+                        if (col.align === 'right') {
+                            doc.text(col.label, colX[i] + col.width - pad, ty, { align: 'right' });
+                        } else if (col.align === 'center') {
+                            doc.text(col.label, colX[i] + col.width / 2, ty, { align: 'center' });
+                        } else {
+                            doc.text(col.label, colX[i] + pad, ty);
+                        }
+                    });
+                    y += rowH;
+                    doc.setDrawColor(...TC.accent);
+                    doc.setLineWidth(0.3);
+                    doc.line(tableX, y, tableX + totalW, y);
+
+                    // Data rows
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(9);
+                    rows.forEach((row, idx) => {
+                        doc.setFillColor(...(idx % 2 === 0 ? TC.pageBg : TC.rowAlt));
+                        doc.rect(tableX, y, totalW, rowH, 'F');
+                        doc.setTextColor(...TC.white);
+                        cols.forEach((col, ci) => {
+                            const val = String(row[ci] != null ? row[ci] : '');
+                            const ty = y + rowH * 0.68;
+                            if (col.align === 'right') {
+                                doc.text(val, colX[ci] + col.width - pad, ty, { align: 'right' });
+                            } else if (col.align === 'center') {
+                                doc.text(val, colX[ci] + col.width / 2, ty, { align: 'center' });
+                            } else {
+                                doc.text(val, colX[ci] + pad, ty);
+                            }
+                        });
+                        y += rowH;
+                    });
+
+                    return { y, tableX, totalW, colX, cols, rowH, pad };
+                };
+
+                // Summary/total row using the same column layout as the preceding table
+                const drawTotalRow = (tbl, label, value, options = {}) => {
+                    const { tableX, totalW, colX, cols, rowH, pad } = tbl;
+                    const isGrand = options.grand || false;
+                    const isBold = options.bold || isGrand;
+                    const rH = isGrand ? 9 : rowH;
+                    let y = tbl.y;
+
+                    if (options.topLine) {
+                        doc.setDrawColor(...TC.accent);
+                        doc.setLineWidth(0.3);
+                        doc.line(tableX, y, tableX + totalW, y);
+                    }
+
+                    doc.setFillColor(...(isGrand ? TC.totalBg : TC.headerBg));
+                    doc.rect(tableX, y, totalW, rH, 'F');
+
+                    doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+                    doc.setFontSize(isGrand ? 11 : 9);
+                    doc.setTextColor(...(isGrand ? TC.lightBlue : TC.white));
+
+                    const ty = y + rH * 0.68;
+                    doc.text(label, colX[0] + pad, ty);
+
+                    const lastCol = cols[cols.length - 1];
+                    const lastX = colX[cols.length - 1];
+                    doc.text(value, lastX + lastCol.width - pad, ty, { align: 'right' });
+
+                    if (isGrand) {
+                        doc.setDrawColor(...TC.lightBlue);
+                        doc.setLineWidth(0.4);
+                        doc.line(tableX, y + rH, tableX + totalW, y + rH);
+                    }
+
+                    tbl.y = y + rH;
+                    return tbl;
+                };
+
+                // --- Gather data (unchanged logic) ---
+                const pins = this.pinManager.pins;
+                const buildings = this.buildingManager.buildings;
+                const antennas = this.connectionManager.getUniqueAntennas();
+
+                const cameras = pins.filter(p => p.type === 'camera');
+                const existingCameras = pins.filter(p => p.type === 'existing-camera');
+                const switches = pins.filter(p => p.type === 'switch');
+                const nvrs = pins.filter(p => p.type === 'nvr');
+                const drops = pins.filter(p => p.type === 'drop');
+
+                const antennaCost = this.budgetManager.connectionCost;
+                const taxRate = this.budgetManager.taxRate;
+
+                // Reuse BudgetManager cost logic
+                let cameraTotal = 0;
+                cameras.forEach(c => { cameraTotal += c.price || 0; });
+                let switchTotal = 0;
+                switches.forEach(s => { switchTotal += s.price || 0; });
+                let nvrTotal = 0;
+                nvrs.forEach(n => { nvrTotal += n.price || 0; });
+
+                const equipmentTotal = cameraTotal + switchTotal + nvrTotal;
+                const antennaTotal = antennas.length * antennaCost;
+                const subtotal = equipmentTotal + antennaTotal;
+                const taxAmount = Math.round(subtotal * (taxRate / 100) * 100) / 100;
+                const grandTotal = subtotal + taxAmount;
+
+                // ========== PAGE 1: Executive Summary ==========
+                let y = margin + 5;
+
+                // Title
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(26);
+                doc.setTextColor(...TC.lightBlue);
+                doc.text('Project Report', margin, y + 8);
+
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(10);
+                doc.setTextColor(...TC.muted);
+                doc.text(new Date().toLocaleDateString(), margin, y + 16);
+
+                doc.setDrawColor(...TC.accent);
+                doc.setLineWidth(0.5);
+                doc.line(margin, y + 19, margin + contentW, y + 19);
+                y += 30;
+
+                // Executive Summary
+                y = drawSectionBar('Executive Summary', y);
+
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(...TC.white);
+                const summaryText =
+                    `This project encompasses ${buildings.length} building(s), ` +
+                    `${cameras.length} new camera(s), ${existingCameras.length} existing camera(s), ` +
+                    `${antennas.length} PtP antenna(s), ${nvrs.length} NVR(s), ` +
+                    `${switches.length} network switch(es), and ${drops.length} network drop(s). ` +
+                    `The project spans ${this.phases.length} phase(s). ` +
+                    `Total estimated cost: ${fmt(grandTotal)} (including ${taxRate}% sales tax).`;
+
+                const summaryLines = doc.splitTextToSize(summaryText, contentW - 8);
+                doc.text(summaryLines, margin + 4, y + 2);
+                y += summaryLines.length * 5 + 8;
+
+                // Project Overview table
+                y = drawSectionBar('Project Overview', y);
+
+                const overviewCols = [
+                    { label: 'Metric', width: 80, align: 'left' },
+                    { label: 'Count', width: 40, align: 'right' },
+                ];
+                const overviewRows = [
+                    ['Buildings', buildings.length],
+                    ['New Cameras', cameras.length],
+                    ['Existing Cameras', existingCameras.length],
+                    ['Network Switches', switches.length],
+                    ['NVRs', nvrs.length],
+                    ['Network Drops', drops.length],
+                    ['PtP Antennas', antennas.length],
+                    ['Phases', this.phases.length],
+                ];
+                let tbl = drawTable(overviewCols, overviewRows, y);
+                tbl = drawTotalRow(tbl, 'Estimated Total', fmt(grandTotal), { grand: true, topLine: true });
+
+                // ========== PAGE 2: Site Image ==========
+                addThemedPage();
+                y = drawPageTitle('Site Layout', margin + 10);
+
+                if (this.mapManager.imageLoaded) {
+                    const savedScale = this.mapManager.scale;
+                    const savedTX = this.mapManager.translateX;
+                    const savedTY = this.mapManager.translateY;
+
+                    // Reset to 1:1 for a tight crop around the image
+                    this.mapManager.scale = 1;
+                    this.mapManager.translateX = 0;
+                    this.mapManager.translateY = 0;
+                    this.mapManager.applyTransform();
+
+                    await new Promise(r => setTimeout(r, 200));
+
+                    const mapCanvas = document.getElementById('mapCanvas');
+                    const canvas = await html2canvas(mapCanvas, {
+                        backgroundColor: null,
+                        scale: 2,
+                        useCORS: true,
+                        logging: false,
+                        width: this.mapManager.imageWidth,
+                        height: this.mapManager.imageHeight,
+                        x: 0,
+                        y: 0
+                    });
+
+                    // Restore original view
+                    this.mapManager.scale = savedScale;
+                    this.mapManager.translateX = savedTX;
+                    this.mapManager.translateY = savedTY;
+                    this.mapManager.applyTransform();
+
+                    const imgData = canvas.toDataURL('image/png');
+                    const ratio = canvas.height / canvas.width;
+                    let imgW = contentW;
+                    let imgH = imgW * ratio;
+                    const maxH = pageH - margin * 2 - 20;
+                    if (imgH > maxH) {
+                        imgH = maxH;
+                        imgW = imgH / ratio;
+                    }
+                    const imgX = margin + (contentW - imgW) / 2;
+                    doc.addImage(imgData, 'PNG', imgX, y, imgW, imgH);
+                } else {
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'italic');
+                    doc.setTextColor(...TC.muted);
+                    doc.text('No site image loaded.', margin, y + 10);
+                }
+
+                // ========== PAGE 3: Budget Summary ==========
+                addThemedPage();
+                y = drawPageTitle('Budget Summary', margin + 10);
+
+                const budgetCols = [
+                    { label: 'Item Type', width: 65, align: 'left' },
+                    { label: 'Quantity', width: 30, align: 'center' },
+                    { label: 'Unit Cost', width: 40, align: 'right' },
+                    { label: 'Subtotal', width: 45, align: 'right' },
+                ];
+
+                const budgetRows = [];
+                if (cameras.length > 0) {
+                    const avg = Math.round(cameraTotal / cameras.length);
+                    budgetRows.push(['New Cameras', cameras.length, fmt(avg), fmt(cameraTotal)]);
+                }
+                if (existingCameras.length > 0) {
+                    budgetRows.push(['Existing Cameras', existingCameras.length, fmt(0), fmt(0)]);
+                }
+                if (switches.length > 0) {
+                    const avg = Math.round(switchTotal / switches.length);
+                    budgetRows.push(['Network Switches', switches.length, fmt(avg), fmt(switchTotal)]);
+                }
+                if (nvrs.length > 0) {
+                    const avg = Math.round(nvrTotal / nvrs.length);
+                    budgetRows.push(['NVRs', nvrs.length, fmt(avg), fmt(nvrTotal)]);
+                }
+                if (drops.length > 0) {
+                    budgetRows.push(['Network Drops', drops.length, fmt(0), fmt(0)]);
+                }
+                if (antennas.length > 0) {
+                    budgetRows.push(['PtP Antennas', antennas.length, fmt(antennaCost), fmt(antennaTotal)]);
+                }
+
+                tbl = drawTable(budgetCols, budgetRows, y);
+                tbl = drawTotalRow(tbl, 'Subtotal', fmt(subtotal), { bold: true, topLine: true });
+                tbl = drawTotalRow(tbl, `Sales Tax (${taxRate}%)`, fmt(taxAmount), {});
+                tbl = drawTotalRow(tbl, 'Grand Total', fmt(grandTotal), { grand: true, topLine: true });
+
+                // ========== PAGE 4+: Breakdown by Building & Phase ==========
+                addThemedPage();
+                y = drawPageTitle('Breakdown by Building', margin + 10);
+
+                const buildingGroups = {};
+                pins.forEach(pin => {
+                    const bldg = this.buildingManager.getBuildingAtPoint(pin.x, pin.y);
+                    const name = bldg ? bldg.name : 'Unassigned';
+                    if (!buildingGroups[name]) buildingGroups[name] = [];
+                    buildingGroups[name].push(pin);
+                });
+
+                const breakdownCols = [
+                    { label: 'Type', width: 65, align: 'left' },
+                    { label: 'Qty', width: 25, align: 'center' },
+                    { label: 'Cost', width: 45, align: 'right' },
+                ];
+
+                Object.entries(buildingGroups).forEach(([bldgName, bldgPins]) => {
+                    if (y > pageH - 55) { addThemedPage(); y = margin + 10; }
+
+                    y = drawSectionBar(bldgName, y + 2);
+
+                    const counts = {};
+                    let bldgTotal = 0;
+                    bldgPins.forEach(p => {
+                        const t = typeLabels[p.type] || p.type;
+                        if (!counts[t]) counts[t] = { qty: 0, cost: 0 };
+                        counts[t].qty++;
+                        counts[t].cost += p.price || 0;
+                        bldgTotal += p.price || 0;
+                    });
+
+                    const bldgRows = Object.entries(counts).map(([type, d]) => [type, d.qty, fmt(d.cost)]);
+                    tbl = drawTable(breakdownCols, bldgRows, y);
+                    tbl = drawTotalRow(tbl, 'Building Total', fmt(bldgTotal), { bold: true, topLine: true });
+                    y = tbl.y + 6;
+                });
+
+                // Phase breakdown
+                if (y > pageH - 55) { addThemedPage(); y = margin + 10; }
+                y += 4;
+                y = drawPageTitle('Breakdown by Phase', y);
+
+                const phaseGroups = {};
+                pins.forEach(pin => {
+                    const phase = pin.phase || 'Unassigned';
+                    if (!phaseGroups[phase]) phaseGroups[phase] = [];
+                    phaseGroups[phase].push(pin);
+                });
+
+                Object.entries(phaseGroups).forEach(([phaseName, phasePins]) => {
+                    if (y > pageH - 55) { addThemedPage(); y = margin + 10; }
+
+                    y = drawSectionBar(phaseName, y + 2);
+
+                    const counts = {};
+                    let phaseTotal = 0;
+                    phasePins.forEach(p => {
+                        const t = typeLabels[p.type] || p.type;
+                        if (!counts[t]) counts[t] = { qty: 0, cost: 0 };
+                        counts[t].qty++;
+                        counts[t].cost += p.price || 0;
+                        phaseTotal += p.price || 0;
+                    });
+
+                    const phaseRows = Object.entries(counts).map(([type, d]) => [type, d.qty, fmt(d.cost)]);
+                    tbl = drawTable(breakdownCols, phaseRows, y);
+                    tbl = drawTotalRow(tbl, 'Phase Total', fmt(phaseTotal), { bold: true, topLine: true });
+                    y = tbl.y + 6;
+                });
+
+                doc.save(`project-report-${Date.now()}.pdf`);
+            } catch (err) {
+                console.error('PDF generation failed:', err);
+                alert('Failed to generate PDF. See console for details.');
+            } finally {
+                btn.textContent = origText;
+                btn.disabled = false;
+            }
         }
 
         addPhase() {
@@ -2799,6 +3273,8 @@
             try {
                 const text = await file.text();
                 const project = JSON.parse(text);
+
+                this.projectName = project.name || '';
 
                 if (project.image) {
                     await this.mapManager.loadImageFromDataURL(project.image);

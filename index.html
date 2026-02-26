@@ -48,6 +48,7 @@
             <button id="saveProjectBtn" class="toolbar-btn">Save Project</button>
             <button id="loadProjectBtn" class="toolbar-btn">Load Project</button>
             <button id="exportExcelBtn" class="toolbar-btn">Export Excel</button>
+            <button id="exportPdfBtn" class="toolbar-btn">Generate PDF</button>
             <input type="file" id="loadProjectInput" accept=".json" hidden>
         </div>
     </div>
@@ -202,6 +203,20 @@
         </div>
     </div>
 
+    <div class="modal" id="saveModal" style="display: none;">
+        <div class="modal-content">
+            <h3>Save Project</h3>
+            <p>Enter a name for your project:</p>
+            <input type="text" id="saveProjectName" placeholder="My Project" autocomplete="off" />
+            <div class="modal-actions">
+                <button id="saveConfirm" class="modal-btn confirm">Save</button>
+                <button id="saveCancel" class="modal-btn cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/lib/jspdf.umd.min.js"></script>
+    <script src="js/lib/html2canvas.min.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
