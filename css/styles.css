@@ -142,6 +142,9 @@ header h1 {
 .map-container.add-connection-mode,
 .map-container.add-switch-mode,
 .map-container.add-existing-camera-mode,
+.map-container.add-nvr-mode,
+.map-container.add-access-control-mode,
+.map-container.add-existing-access-control-mode,
 .map-container.add-building-mode,
 .map-container.add-building-rect-mode {
     cursor: crosshair;
@@ -260,7 +263,8 @@ header h1 {
 }
 
 .pin.camera-pin,
-.pin.switch-pin {
+.pin.switch-pin,
+.pin.access-control-pin {
     width: 28px;
     height: 28px;
     transform: translate(-50%, -50%) scale(var(--pin-scale, 1));
@@ -271,7 +275,8 @@ header h1 {
 }
 
 .pin.camera-pin:hover,
-.pin.switch-pin:hover {
+.pin.switch-pin:hover,
+.pin.access-control-pin:hover {
     transform: translate(-50%, -50%) scale(calc(var(--pin-scale, 1) * 1.1));
 }
 
@@ -284,7 +289,9 @@ header h1 {
 .pin.camera-pin.selected,
 .pin.camera-pin.selected:hover,
 .pin.switch-pin.selected,
-.pin.switch-pin.selected:hover {
+.pin.switch-pin.selected:hover,
+.pin.access-control-pin.selected,
+.pin.access-control-pin.selected:hover {
     transform: translate(-50%, -50%) scale(calc(var(--pin-scale, 1) * 1.2));
 }
 
@@ -392,7 +399,8 @@ header h1 {
 }
 
 .camera-pin .pin-label,
-.switch-pin .pin-label {
+.switch-pin .pin-label,
+.access-control-pin .pin-label {
     margin-top: 14px;
 }
 
@@ -465,7 +473,7 @@ header h1 {
 }
 
 /* Filter visibility */
-.pins-layer.hide-drops .pin:not(.camera-pin):not(.switch-pin):not(.nvr-pin) {
+.pins-layer.hide-drops .pin:not(.camera-pin):not(.switch-pin):not(.nvr-pin):not(.access-control-pin) {
     display: none;
 }
 
@@ -482,6 +490,14 @@ header h1 {
 }
 
 .pins-layer.hide-nvrs .pin.nvr-pin {
+    display: none;
+}
+
+.pins-layer.hide-access-control .pin.access-control-pin:not(.existing-access-control-pin) {
+    display: none;
+}
+
+.pins-layer.hide-existing-access-control .pin.existing-access-control-pin {
     display: none;
 }
 

@@ -7,10 +7,15 @@
     let DEFAULT_CAMERA_PRICE = 1500;
     let DEFAULT_SWITCH_PRICE = 1600;
     let DEFAULT_NVR_PRICE = 3000;
+    let DEFAULT_ACCESS_CONTROL_PRICE = 500;
     let defaultPinScale = 1;
 
     function isCameraType(type) {
         return type === 'camera' || type === 'existing-camera';
+    }
+
+    function isAccessControlType(type) {
+        return type === 'access-control' || type === 'existing-access-control';
     }
 
     // ============ MAP MANAGER ============
@@ -113,7 +118,7 @@
 
         setMode(mode) {
             this.mode = mode;
-            this.container.classList.remove('pan-mode', 'add-drop-mode', 'add-camera-mode', 'add-connection-mode', 'add-switch-mode', 'add-existing-camera-mode', 'add-nvr-mode', 'add-building-mode', 'add-building-rect-mode');
+            this.container.classList.remove('pan-mode', 'add-drop-mode', 'add-camera-mode', 'add-connection-mode', 'add-switch-mode', 'add-existing-camera-mode', 'add-nvr-mode', 'add-building-mode', 'add-building-rect-mode', 'add-access-control-mode', 'add-existing-access-control-mode');
             if (mode === 'pan') {
                 this.container.classList.add('pan-mode');
             } else if (mode === 'add-drop') {
@@ -128,6 +133,10 @@
                 this.container.classList.add('add-existing-camera-mode');
             } else if (mode === 'add-nvr') {
                 this.container.classList.add('add-nvr-mode');
+            } else if (mode === 'add-access-control') {
+                this.container.classList.add('add-access-control-mode');
+            } else if (mode === 'add-existing-access-control') {
+                this.container.classList.add('add-existing-access-control-mode');
             } else if (mode === 'add-building') {
                 this.container.classList.add('add-building-mode');
             } else if (mode === 'add-building-rect') {
@@ -222,7 +231,8 @@
             const pinModeMap = {
                 'add-drop': 'drop', 'add-camera': 'camera',
                 'add-switch': 'switch', 'add-existing-camera': 'existing-camera',
-                'add-nvr': 'nvr'
+                'add-nvr': 'nvr', 'add-access-control': 'access-control',
+                'add-existing-access-control': 'existing-access-control'
             };
             if (pinModeMap[this.mode]) {
                 if (this.onPinPlacement) {
@@ -945,6 +955,8 @@
             this.switchCounter = 0;
             this.existingCameraCounter = 0;
             this.nvrCounter = 0;
+            this.accessControlCounter = 0;
+            this.existingAccessControlCounter = 0;
 
             this.onPinSelect = null;
             this.onPinsChange = null;
@@ -986,11 +998,19 @@
             } else if (type === 'nvr') {
                 this.nvrCounter++;
                 name = data.name || `NVR-${this.nvrCounter}`;
+            } else if (type === 'access-control') {
+                this.accessControlCounter++;
+                name = data.name || `AC-${this.accessControlCounter}`;
+            } else if (type === 'existing-access-control') {
+                this.existingAccessControlCounter++;
+                name = data.name || `ExAC-${this.existingAccessControlCounter}`;
             }
 
             const defaultPrice = type === 'existing-camera' ? 0
+                : type === 'existing-access-control' ? 0
                 : type === 'switch' ? DEFAULT_SWITCH_PRICE
                 : type === 'nvr' ? DEFAULT_NVR_PRICE
+                : type === 'access-control' ? DEFAULT_ACCESS_CONTROL_PRICE
                 : DEFAULT_CAMERA_PRICE;
 
             const pin = {
@@ -1019,6 +1039,7 @@
         renderPin(pin) {
             const element = document.createElement('div');
             const isCamera = isCameraType(pin.type);
+            const isAC = isAccessControlType(pin.type);
             if (isCamera) {
                 element.className = 'pin camera-pin';
                 if (pin.type === 'existing-camera') element.classList.add('existing-camera-pin');
@@ -1026,6 +1047,9 @@
                 element.className = 'pin switch-pin';
             } else if (pin.type === 'nvr') {
                 element.className = 'pin nvr-pin';
+            } else if (isAC) {
+                element.className = 'pin access-control-pin';
+                if (pin.type === 'existing-access-control') element.classList.add('existing-access-control-pin');
             } else {
                 element.className = 'pin';
             }
@@ -1316,6 +1340,22 @@
                     <rect x="6" y="12" width="12" height="3" rx="1" fill="#d97706"/>
                     <circle cx="16" cy="18" r="1.5" fill="#fbbf24"/>
                 `;
+            } else if (type === 'access-control') {
+                svg.setAttribute('viewBox', '0 0 24 24');
+                svg.innerHTML = `
+                    <rect x="3" y="2" width="18" height="20" rx="2" fill="#ef4444" stroke="#b91c1c" stroke-width="1"/>
+                    <rect x="6" y="5" width="12" height="8" rx="1" fill="#b91c1c"/>
+                    <circle cx="12" cy="9" r="2" fill="#fca5a5"/>
+                    <rect x="11" y="15" width="2" height="4" rx="1" fill="#fca5a5"/>
+                `;
+            } else if (type === 'existing-access-control') {
+                svg.setAttribute('viewBox', '0 0 24 24');
+                svg.innerHTML = `
+                    <rect x="3" y="2" width="18" height="20" rx="2" fill="#22c55e" stroke="#16a34a" stroke-width="1"/>
+                    <rect x="6" y="5" width="12" height="8" rx="1" fill="#16a34a"/>
+                    <circle cx="12" cy="9" r="2" fill="#86efac"/>
+                    <rect x="11" y="15" width="2" height="4" rx="1" fill="#86efac"/>
+                `;
             } else {
                 // Camera icon
                 svg.setAttribute('viewBox', '0 0 24 24');
@@ -1525,6 +1565,8 @@
                 switchCounter: this.switchCounter,
                 existingCameraCounter: this.existingCameraCounter,
                 nvrCounter: this.nvrCounter,
+                accessControlCounter: this.accessControlCounter,
+                existingAccessControlCounter: this.existingAccessControlCounter,
                 defaultPinScale: defaultPinScale
             };
         }
@@ -1559,6 +1601,8 @@
             this.switchCounter = state.switchCounter || this.pins.filter(p => p.type === 'switch').length;
             this.existingCameraCounter = state.existingCameraCounter || this.pins.filter(p => p.type === 'existing-camera').length;
             this.nvrCounter = state.nvrCounter || this.pins.filter(p => p.type === 'nvr').length;
+            this.accessControlCounter = state.accessControlCounter || this.pins.filter(p => p.type === 'access-control').length;
+            this.existingAccessControlCounter = state.existingAccessControlCounter || this.pins.filter(p => p.type === 'existing-access-control').length;
 
             if (state.defaultPinScale !== undefined) {
                 defaultPinScale = state.defaultPinScale;
@@ -1576,6 +1620,8 @@
             this.switchCounter = 0;
             this.existingCameraCounter = 0;
             this.nvrCounter = 0;
+            this.accessControlCounter = 0;
+            this.existingAccessControlCounter = 0;
             defaultPinScale = 1;
             this.notifyChange();
         }
@@ -1594,6 +1640,8 @@
                 existingCameraCount: document.getElementById('existingCameraCount'),
                 switchCount: document.getElementById('switchCount'),
                 nvrCount: document.getElementById('nvrCount'),
+                accessControlCount: document.getElementById('accessControlCount'),
+                existingAccessControlCount: document.getElementById('existingAccessControlCount'),
                 antennaCount: document.getElementById('antennaCount'),
                 budgetBreakdown: document.getElementById('budgetBreakdown'),
                 equipmentSubtotal: document.getElementById('equipmentSubtotal'),
@@ -1605,6 +1653,7 @@
                 defaultCameraPriceInput: document.getElementById('defaultCameraPrice'),
                 defaultSwitchPriceInput: document.getElementById('defaultSwitchPrice'),
                 defaultNvrPriceInput: document.getElementById('defaultNvrPrice'),
+                defaultAccessControlPriceInput: document.getElementById('defaultAccessControlPrice'),
                 connectionCostInput: document.getElementById('connectionCost'),
                 salesTaxRateInput: document.getElementById('salesTaxRate')
             };
@@ -1623,6 +1672,10 @@
 
             this.elements.defaultNvrPriceInput.addEventListener('change', (e) => {
                 DEFAULT_NVR_PRICE = parseFloat(e.target.value) || 3000;
+            });
+
+            this.elements.defaultAccessControlPriceInput.addEventListener('change', (e) => {
+                DEFAULT_ACCESS_CONTROL_PRICE = parseFloat(e.target.value) || 500;
             });
 
             this.elements.connectionCostInput.addEventListener('change', (e) => {
@@ -1651,6 +1704,8 @@
             const existingCameras = this.pins.filter(p => p.type === 'existing-camera');
             const switches = this.pins.filter(p => p.type === 'switch');
             const nvrs = this.pins.filter(p => p.type === 'nvr');
+            const accessControls = this.pins.filter(p => p.type === 'access-control');
+            const existingAccessControls = this.pins.filter(p => p.type === 'existing-access-control');
             const antennaCount = this.getAntennaCount();
 
             let cameraTotal = 0;
@@ -1662,12 +1717,17 @@
             let nvrTotal = 0;
             nvrs.forEach(n => { nvrTotal += n.price || 0; });
 
-            const equipmentTotal = cameraTotal + switchTotal + nvrTotal;
+            let accessControlTotal = 0;
+            accessControls.forEach(a => { accessControlTotal += a.price || 0; });
+
+            const equipmentTotal = cameraTotal + switchTotal + nvrTotal + accessControlTotal;
 
             this.elements.cameraCount.textContent = cameras.length;
             this.elements.existingCameraCount.textContent = existingCameras.length;
             this.elements.switchCount.textContent = switches.length;
             this.elements.nvrCount.textContent = nvrs.length;
+            this.elements.accessControlCount.textContent = accessControls.length;
+            this.elements.existingAccessControlCount.textContent = existingAccessControls.length;
             this.elements.antennaCount.textContent = antennaCount;
 
             let breakdownHTML = '';
@@ -1679,6 +1739,9 @@
             }
             if (nvrs.length > 0) {
                 breakdownHTML += `<div class="breakdown-item"><span>NVRs x${nvrs.length}</span><span>$${nvrTotal}</span></div>`;
+            }
+            if (accessControls.length > 0) {
+                breakdownHTML += `<div class="breakdown-item"><span>Access Control x${accessControls.length}</span><span>$${accessControlTotal}</span></div>`;
             }
             this.elements.budgetBreakdown.innerHTML = breakdownHTML;
 
@@ -1710,6 +1773,7 @@
                 defaultCameraPrice: DEFAULT_CAMERA_PRICE,
                 defaultSwitchPrice: DEFAULT_SWITCH_PRICE,
                 defaultNvrPrice: DEFAULT_NVR_PRICE,
+                defaultAccessControlPrice: DEFAULT_ACCESS_CONTROL_PRICE,
                 connectionCost: this.connectionCost,
                 taxRate: this.taxRate
             };
@@ -1719,11 +1783,13 @@
             DEFAULT_CAMERA_PRICE = state.defaultCameraPrice || 1500;
             DEFAULT_SWITCH_PRICE = state.defaultSwitchPrice || 1600;
             DEFAULT_NVR_PRICE = state.defaultNvrPrice || 3000;
+            DEFAULT_ACCESS_CONTROL_PRICE = state.defaultAccessControlPrice || 500;
             this.connectionCost = state.connectionCost || 400;
             this.taxRate = state.taxRate || 0;
             this.elements.defaultCameraPriceInput.value = DEFAULT_CAMERA_PRICE;
             this.elements.defaultSwitchPriceInput.value = DEFAULT_SWITCH_PRICE;
             this.elements.defaultNvrPriceInput.value = DEFAULT_NVR_PRICE;
+            this.elements.defaultAccessControlPriceInput.value = DEFAULT_ACCESS_CONTROL_PRICE;
             this.elements.connectionCostInput.value = this.connectionCost;
             this.elements.salesTaxRateInput.value = this.taxRate;
         }
@@ -1734,11 +1800,13 @@
             DEFAULT_CAMERA_PRICE = 1500;
             DEFAULT_SWITCH_PRICE = 1600;
             DEFAULT_NVR_PRICE = 3000;
+            DEFAULT_ACCESS_CONTROL_PRICE = 500;
             this.connectionCost = 400;
             this.taxRate = 0;
             this.elements.defaultCameraPriceInput.value = 1500;
             this.elements.defaultSwitchPriceInput.value = 1600;
             this.elements.defaultNvrPriceInput.value = 3000;
+            this.elements.defaultAccessControlPriceInput.value = 500;
             this.elements.connectionCostInput.value = 400;
             this.elements.salesTaxRateInput.value = 0;
             this.update();
@@ -1828,6 +1896,8 @@
             const existingCameras = pins.filter(p => p.type === 'existing-camera');
             const switches = pins.filter(p => p.type === 'switch');
             const nvrs = pins.filter(p => p.type === 'nvr');
+            const accessControls = pins.filter(p => p.type === 'access-control');
+            const existingAccessControls = pins.filter(p => p.type === 'existing-access-control');
 
             let html = '';
 
@@ -1864,6 +1934,16 @@
             if (nvrs.length > 0) {
                 html += '<div class="pin-group-label" style="color: #f59e0b; font-size: 0.75rem; margin-top: 0.5rem; margin-bottom: 0.25rem;">NVRs</div>';
                 nvrs.forEach(pin => { html += this.createPinListItem(pin); });
+            }
+
+            if (accessControls.length > 0) {
+                html += '<div class="pin-group-label" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.5rem; margin-bottom: 0.25rem;">New Access Control</div>';
+                accessControls.forEach(pin => { html += this.createPinListItem(pin); });
+            }
+
+            if (existingAccessControls.length > 0) {
+                html += '<div class="pin-group-label" style="color: #22c55e; font-size: 0.75rem; margin-top: 0.5rem; margin-bottom: 0.25rem;">Existing Access Control</div>';
+                existingAccessControls.forEach(pin => { html += this.createPinListItem(pin); });
             }
 
             if (connections.length > 0) {
@@ -1927,6 +2007,8 @@
             else if (pin.type === 'switch') typeLabel = `Switch ($${pin.price})`;
             else if (pin.type === 'nvr') typeLabel = `NVR ($${pin.price})`;
             else if (pin.type === 'existing-camera') typeLabel = `Existing Camera ($${pin.price})`;
+            else if (pin.type === 'access-control') typeLabel = `Access Control ($${pin.price})`;
+            else if (pin.type === 'existing-access-control') typeLabel = `Existing Access Control`;
             else typeLabel = `Camera ($${pin.price})`;
 
             let iconSvg;
@@ -1953,6 +2035,18 @@
                 iconSvg = `
                     <svg viewBox="0 0 24 24" style="width: 16px; height: 16px;">
                         <rect x="3" y="4" width="18" height="16" rx="2" fill="#f59e0b"/>
+                    </svg>
+                `;
+            } else if (pin.type === 'access-control') {
+                iconSvg = `
+                    <svg viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                        <rect x="3" y="2" width="18" height="20" rx="2" fill="#ef4444"/>
+                    </svg>
+                `;
+            } else if (pin.type === 'existing-access-control') {
+                iconSvg = `
+                    <svg viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                        <rect x="3" y="2" width="18" height="20" rx="2" fill="#22c55e"/>
                     </svg>
                 `;
             } else {
@@ -2080,7 +2174,7 @@
                 this.elements.fovRange.value = pin.fovRange;
 
                 this.updateLinkedDropOptions(pin);
-            } else if (pin.type === 'switch' || pin.type === 'nvr') {
+            } else if (pin.type === 'switch' || pin.type === 'nvr' || pin.type === 'access-control') {
                 this.elements.cameraPriceRow.style.display = 'block';
                 this.elements.cameraPrice.value = pin.price;
                 this.elements.linkedDropRow.style.display = 'none';
@@ -2304,6 +2398,8 @@
             const addSwitchBtn = document.getElementById('addSwitchBtn');
             const addExistingCameraBtn = document.getElementById('addExistingCameraBtn');
             const addNvrBtn = document.getElementById('addNvrBtn');
+            const addAccessControlBtn = document.getElementById('addAccessControlBtn');
+            const addExistingAccessControlBtn = document.getElementById('addExistingAccessControlBtn');
             const addBuildingBtn = document.getElementById('addBuildingBtn');
             const addBuildingRectBtn = document.getElementById('addBuildingRectBtn');
             const selectModeBtn = document.getElementById('selectModeBtn');
@@ -2315,6 +2411,8 @@
             addSwitchBtn.addEventListener('click', () => this.setMode('add-switch'));
             addExistingCameraBtn.addEventListener('click', () => this.setMode('add-existing-camera'));
             addNvrBtn.addEventListener('click', () => this.setMode('add-nvr'));
+            addAccessControlBtn.addEventListener('click', () => this.setMode('add-access-control'));
+            addExistingAccessControlBtn.addEventListener('click', () => this.setMode('add-existing-access-control'));
             addBuildingBtn.addEventListener('click', () => this.setMode('add-building'));
             addBuildingRectBtn.addEventListener('click', () => this.setMode('add-building-rect'));
             selectModeBtn.addEventListener('click', () => this.setMode('select'));
@@ -2353,6 +2451,8 @@
             const filterExistingCamerasBtn = document.getElementById('filterExistingCamerasBtn');
             const filterSwitchesBtn = document.getElementById('filterSwitchesBtn');
             const filterNvrsBtn = document.getElementById('filterNvrsBtn');
+            const filterAccessControlBtn = document.getElementById('filterAccessControlBtn');
+            const filterExistingAccessControlBtn = document.getElementById('filterExistingAccessControlBtn');
             const filterConnectionsBtn = document.getElementById('filterConnectionsBtn');
             const filterFovBtn = document.getElementById('filterFovBtn');
 
@@ -2366,6 +2466,8 @@
                 existingCameras: true,
                 switches: true,
                 nvrs: true,
+                accessControl: true,
+                existingAccessControl: true,
                 connections: true,
                 fov: true,
                 buildings: true
@@ -2399,6 +2501,18 @@
                 this.filters.nvrs = !this.filters.nvrs;
                 filterNvrsBtn.classList.toggle('active', this.filters.nvrs);
                 pinsLayer.classList.toggle('hide-nvrs', !this.filters.nvrs);
+            });
+
+            filterAccessControlBtn.addEventListener('click', () => {
+                this.filters.accessControl = !this.filters.accessControl;
+                filterAccessControlBtn.classList.toggle('active', this.filters.accessControl);
+                pinsLayer.classList.toggle('hide-access-control', !this.filters.accessControl);
+            });
+
+            filterExistingAccessControlBtn.addEventListener('click', () => {
+                this.filters.existingAccessControl = !this.filters.existingAccessControl;
+                filterExistingAccessControlBtn.classList.toggle('active', this.filters.existingAccessControl);
+                pinsLayer.classList.toggle('hide-existing-access-control', !this.filters.existingAccessControl);
             });
 
             filterConnectionsBtn.addEventListener('click', () => {
@@ -2522,6 +2636,8 @@
                 'add-switch': document.getElementById('addSwitchBtn'),
                 'add-existing-camera': document.getElementById('addExistingCameraBtn'),
                 'add-nvr': document.getElementById('addNvrBtn'),
+                'add-access-control': document.getElementById('addAccessControlBtn'),
+                'add-existing-access-control': document.getElementById('addExistingAccessControlBtn'),
                 'add-building': document.getElementById('addBuildingBtn'),
                 'add-building-rect': document.getElementById('addBuildingRectBtn')
             };
@@ -2638,7 +2754,9 @@
                 'existing-camera': 'Existing Camera',
                 'switch': 'Network Switch',
                 'nvr': 'NVR',
-                'drop': 'Network Drop'
+                'drop': 'Network Drop',
+                'access-control': 'Access Control',
+                'existing-access-control': 'Existing Access Control'
             };
 
             // Build rows: one per pin, resolve building name

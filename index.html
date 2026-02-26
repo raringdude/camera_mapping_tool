@@ -20,6 +20,8 @@
         <button id="addSwitchBtn" class="toolbar-btn">Add Switch</button>
         <button id="addExistingCameraBtn" class="toolbar-btn">Add Existing Camera</button>
         <button id="addNvrBtn" class="toolbar-btn">Add NVR</button>
+        <button id="addAccessControlBtn" class="toolbar-btn">Add Access Control</button>
+        <button id="addExistingAccessControlBtn" class="toolbar-btn">Add Existing AC</button>
         <button id="addBuildingBtn" class="toolbar-btn">Add Building</button>
         <button id="addBuildingRectBtn" class="toolbar-btn">Add Building (Rect)</button>
         <div class="mode-toggle">
@@ -34,6 +36,8 @@
             <button id="filterExistingCamerasBtn" class="toolbar-btn filter-btn active" data-filter="existing-cameras">Existing Cams</button>
             <button id="filterSwitchesBtn" class="toolbar-btn filter-btn active" data-filter="switches">Switches</button>
             <button id="filterNvrsBtn" class="toolbar-btn filter-btn active" data-filter="nvrs">NVRs</button>
+            <button id="filterAccessControlBtn" class="toolbar-btn filter-btn active" data-filter="access-control">AC</button>
+            <button id="filterExistingAccessControlBtn" class="toolbar-btn filter-btn active" data-filter="existing-access-control">Existing AC</button>
             <button id="filterConnectionsBtn" class="toolbar-btn filter-btn active" data-filter="connections">Connections</button>
             <button id="filterFovBtn" class="toolbar-btn filter-btn active" data-filter="fov">FOV</button>
             <button id="filterBuildingsBtn" class="toolbar-btn filter-btn active" data-filter="buildings">Buildings</button>
@@ -129,6 +133,10 @@
                     <input type="number" id="defaultNvrPrice" value="3000" min="0">
                 </div>
                 <div class="labor-cost-config">
+                    <label for="defaultAccessControlPrice">Default access control price ($):</label>
+                    <input type="number" id="defaultAccessControlPrice" value="500" min="0">
+                </div>
+                <div class="labor-cost-config">
                     <label for="connectionCost">Cost per PtP Antenna ($):</label>
                     <input type="number" id="connectionCost" value="400" min="0">
                 </div>
@@ -156,6 +164,14 @@
                     <div class="budget-row">
                         <span>NVRs:</span>
                         <span id="nvrCount">0</span>
+                    </div>
+                    <div class="budget-row">
+                        <span>New Access Control:</span>
+                        <span id="accessControlCount">0</span>
+                    </div>
+                    <div class="budget-row">
+                        <span>Existing Access Control:</span>
+                        <span id="existingAccessControlCount">0</span>
                     </div>
                     <div class="budget-breakdown" id="budgetBreakdown">
                         <!-- Equipment breakdown inserted here -->
